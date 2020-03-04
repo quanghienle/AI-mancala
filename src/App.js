@@ -8,12 +8,11 @@ import "./App.css";
 class App extends Component {
   state = {
     grid: null,
-    xMancalas: [2, 14],
-    oMancalas: [8, 20],
-    playerTurn: "x",
+    playerTurn: Math.random() >= 0.5 ? 'x' : 'o',
     stonesInHand: 0,
     popUp: false,
-    activeCell: null
+    activeCell: null,
+    isClockwise: null
   };
 
   UNSAFE_componentWillMount() {
@@ -62,11 +61,32 @@ class App extends Component {
 
   endTurn() {
     const nextPlayer = this.state.playerTurn === "x" ? "o" : "x";
-    this.setState({ playerTurn: nextPlayer, popUp: true });
+    this.setState({ playerTurn: nextPlayer });
+  }
+
+  stealStones(num) {
+    const curr = this.state.activeCell;
+
+    const currPlayer = this.state.playerTurn;
+    const playerMancalas = Config.player[currPlayer].mancala;
+    const m1 = this.state.grid[playerMancalas[0]].numberOfStones;
+    const m2 = this.state.grid[playerMancalas[1]].numberOfStones;
+
+    const min = m1 < m2 ? playerMancalas[0] : playerMancalas[1];
+
+    const opStones = this.state.grid[curr].numberOfStones;
+    const minMancalaStones = this.state.grid[min].numberOfStones;
+
+    this.updateCell({ numberOfStones: opStones - num + 1 }, curr);
+    this.updateCell({ numberOfStones: minMancalaStones + num }, min);
+    this.setState({ stonesInHand: this.state.stonesInHand - 1 });
+    this.playTurn(this.state.isClockwise);
   }
 
   playTurn(isClockwise) {
     if (this.state.stonesInHand !== 0) {
+      this.setState({ popUp: false });
+      this.setState({ isClockwise: isClockwise });
       const intervalId = setInterval(() => {
         const next = this.getNext(this.state.activeCell, isClockwise);
         let updatedStones = this.state.grid[next].numberOfStones + 1;
@@ -82,13 +102,24 @@ class App extends Component {
         }
 
         this.clearActive();
-        this.updateCell({ active: true, numberOfStones: updatedStones }, next);
+        this.updateCell({ active: true }, next);
+        this.setState({ activeCell: next });
 
-        this.setState({ stonesInHand: updatedHand, activeCell: next });
+        if (
+          this.state.grid[next].mancala &&
+          this.state.grid[next].player !== this.state.playerTurn
+        ) {
+          this.setState({ popUp: true });
+          clearInterval(intervalId);
+        } else {
+          this.updateCell({ numberOfStones: updatedStones }, next);
+          this.setState({ stonesInHand: updatedHand });
+        }
 
         if (
           updatedHand === 0 &&
-          (updatedStones === 1 || this.state.grid[next].mancala)
+          updatedStones === 1 &&
+          !this.state.grid[next].mancala
         ) {
           this.endTurn();
           clearInterval(intervalId);
@@ -115,6 +146,41 @@ class App extends Component {
           >
             Counter clockwise
           </Button>
+
+          {this.state.popUp ? (
+            <div className="pop-up">
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => this.playTurn(this.state.isClockwise)}
+              >
+                skip
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => this.stealStones(0)}
+              >
+                Place 1 Stone & Pick 0
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => this.stealStones(1)}
+              >
+                Place 1 Stone & Pick 1
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => this.stealStones(2)}
+              >
+                Place 1 Stone & Pick 2
+              </Button>
+            </div>
+          ) : (
+            <div className="pop-up" />
+          )}
         </div>
         <div
           className="grid-container"
@@ -139,19 +205,6 @@ class App extends Component {
           )}
           <h3>Stones in hand: {this.state.stonesInHand}</h3>
           <h3>{Config.player[this.state.playerTurn].name}</h3>
-          {this.state.popUp ? (
-            <div className="pop-up">
-              <Button variant="contained" color="primary">
-                skip
-              </Button>
-              <Button variant="contained" color="primary">
-                Pick 1
-              </Button>
-              <Button variant="contained" color="primary">
-                Pick 2
-              </Button>
-            </div>
-          ) : null}
         </div>
       </div>
     );
