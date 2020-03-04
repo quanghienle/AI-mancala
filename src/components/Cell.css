@@ -1,0 +1,13 @@
+.button-container {
+  position: absolute;
+  text-align: center;
+}
+
+.cell-button {
+  border-width: 4px;
+  width: inherit;
+  height: inherit;
+  border-radius: 25px;
+  font-size: 20px;
+  outline: none;
+}
