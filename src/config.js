@@ -4,6 +4,12 @@ const config = {
     cellHeight: 70,
     numberOfStones: 5,
     activeColor: 'magenta',
+    options: [
+        {label: 'skip', put: 0, take: 0},
+        {label: 'place 1 & take 0', put: 1, take: 0},
+        {label: 'place 1 & take 1', put: 1, take: 1},
+        {label: 'place 1 & take 2', put: 1, take: 2},
+    ],
     player: {
         'x': {
             name: 'Player_1 (blue)',

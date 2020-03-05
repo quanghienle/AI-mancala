@@ -8,7 +8,7 @@ import "./App.css";
 class App extends Component {
   state = {
     grid: null,
-    playerTurn: Math.random() >= 0.5 ? 'x' : 'o',
+    playerTurn: Math.random() >= 0.5 ? "x" : "o",
     stonesInHand: 0,
     popUp: false,
     activeCell: null,
@@ -29,6 +29,104 @@ class App extends Component {
     return body;
   };
 
+  ex = {
+    index: 0,
+    isClockwise: true,
+    opList: [
+      { label: "place 1 & take 1", put: 1, take: 1 },
+      { label: "place 1 & take 1", put: 1, take: 1 }
+    ],
+    cost: 49,
+    path: [
+      { index: 0, numberOfStones: 0, stonesInHand: 5 },
+      { index: 1, numberOfStones: 6, stonesInHand: 4 },
+      { index: 2, numberOfStones: 1, stonesInHand: 3 },
+      { index: 3, numberOfStones: 6, stonesInHand: 2 },
+      { index: 4, numberOfStones: 6, stonesInHand: 1 },
+      { index: 5, numberOfStones: 0, stonesInHand: 6 },
+      { index: 6, numberOfStones: 6, stonesInHand: 5 },
+      { index: 7, numberOfStones: 6, stonesInHand: 4 },
+      { index: 8, numberOfStones: 0, stonesInHand: 4 },
+      { index: 9, numberOfStones: 6, stonesInHand: 3 },
+      { index: 10, numberOfStones: 6, stonesInHand: 2 },
+      { index: 11, numberOfStones: 6, stonesInHand: 1 },
+      { index: 12, numberOfStones: 0, stonesInHand: 6 },
+      { index: 13, numberOfStones: 6, stonesInHand: 5 },
+      { index: 14, numberOfStones: 1, stonesInHand: 4 },
+      { index: 15, numberOfStones: 6, stonesInHand: 3 },
+      { index: 16, numberOfStones: 6, stonesInHand: 2 },
+      { index: 17, numberOfStones: 6, stonesInHand: 1 },
+      { index: 18, numberOfStones: 0, stonesInHand: 6 },
+      { index: 19, numberOfStones: 6, stonesInHand: 5 },
+      { index: 20, numberOfStones: 0, stonesInHand: 5 },
+      { index: 21, numberOfStones: 6, stonesInHand: 4 },
+      { index: 22, numberOfStones: 6, stonesInHand: 3 },
+      { index: 23, numberOfStones: 6, stonesInHand: 2 },
+      { index: 0, numberOfStones: 1, stonesInHand: 1 },
+      { index: 1, numberOfStones: 0, stonesInHand: 7 },
+      { index: 2, numberOfStones: 2, stonesInHand: 6 },
+      { index: 3, numberOfStones: 7, stonesInHand: 5 },
+      { index: 4, numberOfStones: 7, stonesInHand: 4 },
+      { index: 5, numberOfStones: 1, stonesInHand: 3 },
+      { index: 6, numberOfStones: 7, stonesInHand: 2 },
+      { index: 7, numberOfStones: 7, stonesInHand: 1 },
+      { index: 8, numberOfStones: 0, stonesInHand: 1 },
+      { index: 9, numberOfStones: 0, stonesInHand: 7 },
+      { index: 10, numberOfStones: 7, stonesInHand: 6 },
+      { index: 11, numberOfStones: 7, stonesInHand: 5 },
+      { index: 12, numberOfStones: 1, stonesInHand: 4 },
+      { index: 13, numberOfStones: 7, stonesInHand: 3 },
+      { index: 14, numberOfStones: 2, stonesInHand: 2 },
+      { index: 15, numberOfStones: 7, stonesInHand: 1 },
+      { index: 16, numberOfStones: 0, stonesInHand: 7 },
+      { index: 17, numberOfStones: 7, stonesInHand: 6 },
+      { index: 18, numberOfStones: 1, stonesInHand: 5 },
+      { index: 19, numberOfStones: 7, stonesInHand: 4 },
+      { index: 20, numberOfStones: 0, stonesInHand: 4 },
+      { index: 21, numberOfStones: 7, stonesInHand: 3 },
+      { index: 22, numberOfStones: 7, stonesInHand: 2 },
+      { index: 23, numberOfStones: 7, stonesInHand: 1 },
+      { index: 0, numberOfStones: 0, stonesInHand: 2 },
+      { index: 1, numberOfStones: 1, stonesInHand: 1 },
+      { index: 2, numberOfStones: 3, stonesInHand: 0 }
+    ]
+  };
+
+  performTurn() {
+    let count = 0;
+    const end = this.ex.path.length;
+
+    const intervalId = setInterval(() => {
+      const cellNum = this.ex.path[count].index;
+      const numStones = this.ex.path[count].numberOfStones;
+      const hand = this.ex.path[count].stonesInHand;
+
+      this.clearActive();
+      this.updateCell({ active: true, numberOfStones: numStones }, cellNum);
+      this.setState({ activeCell: cellNum, stonesInHand: hand });
+
+      count += 1;
+      if (count === end) {
+        clearInterval(intervalId);
+      }
+    }, 1000);
+  }
+
+  handleOnclick = async index => {
+    const response = await fetch("/api", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        player: "x",
+        gridArr: this.state.grid
+      })
+    });
+    const body = await response.json();
+    console.log("Path: ", body.path);
+  };
+
   updateCell(obj, cellNum) {
     const cell = this.state.grid[cellNum];
     const updatedCell = { ...cell, ...obj };
@@ -36,9 +134,7 @@ class App extends Component {
   }
 
   clearActive() {
-    this.state.grid.forEach((_, index) =>
-      this.updateCell({ active: false }, index)
-    );
+    this.state.grid.forEach((_, index) => this.updateCell({ active: false }, index));
   }
 
   onClick(cellNum) {
@@ -49,9 +145,10 @@ class App extends Component {
     ) {
       this.clearActive();
       this.setState({ activeCell: cellNum });
+
       const stones = this.state.grid[cellNum].numberOfStones;
-      this.setState({ stonesInHand: stones });
       this.updateCell({ active: true, numberOfStones: 0 }, cellNum);
+      this.setState({ stonesInHand: stones });
     }
   }
 
@@ -61,18 +158,25 @@ class App extends Component {
 
   endTurn() {
     const nextPlayer = this.state.playerTurn === "x" ? "o" : "x";
-    this.setState({ playerTurn: nextPlayer });
+    this.setState({ playerTurn: nextPlayer, popUp: false });
   }
 
-  stealStones(num) {
+  stealStones(op) {
+    const num = op.take;
+    const isSkip = op.put === 0;
+
+    if (isSkip) {
+      this.playTurn(this.state.isClockwise);
+      return;
+    }
+
     const curr = this.state.activeCell;
 
     const currPlayer = this.state.playerTurn;
     const playerMancalas = Config.player[currPlayer].mancala;
-    const m1 = this.state.grid[playerMancalas[0]].numberOfStones;
-    const m2 = this.state.grid[playerMancalas[1]].numberOfStones;
+    const isMin = this.state.grid[playerMancalas[0]].numberOfStones < this.state.grid[playerMancalas[1]].numberOfStones;
 
-    const min = m1 < m2 ? playerMancalas[0] : playerMancalas[1];
+    const min = isMin ? playerMancalas[0] : playerMancalas[1];
 
     const opStones = this.state.grid[curr].numberOfStones;
     const minMancalaStones = this.state.grid[min].numberOfStones;
@@ -89,14 +193,11 @@ class App extends Component {
       this.setState({ isClockwise: isClockwise });
       const intervalId = setInterval(() => {
         const next = this.getNext(this.state.activeCell, isClockwise);
+        const stones = this.state.stonesInHand;
         let updatedStones = this.state.grid[next].numberOfStones + 1;
-        let updatedHand = this.state.stonesInHand - 1;
+        let updatedHand = stones - 1;
 
-        if (
-          updatedHand === 0 &&
-          updatedStones > 1 &&
-          !this.state.grid[next].mancala
-        ) {
+        if (updatedHand === 0 && updatedStones > 1 && !this.state.grid[next].mancala) {
           updatedHand = updatedStones;
           updatedStones = 0;
         }
@@ -105,24 +206,17 @@ class App extends Component {
         this.updateCell({ active: true }, next);
         this.setState({ activeCell: next });
 
-        if (
-          this.state.grid[next].mancala &&
-          this.state.grid[next].player !== this.state.playerTurn
-        ) {
-          this.setState({ popUp: true });
+        if (this.state.grid[next].mancala && this.state.grid[next].player !== this.state.playerTurn) {
+          this.setState({ popUp: true, stonesInHand: stones });
           clearInterval(intervalId);
         } else {
           this.updateCell({ numberOfStones: updatedStones }, next);
           this.setState({ stonesInHand: updatedHand });
         }
 
-        if (
-          updatedHand === 0 &&
-          updatedStones === 1 &&
-          !this.state.grid[next].mancala
-        ) {
-          this.endTurn();
+        if (updatedHand <= 0 && (updatedStones === 1 || this.state.grid[next].mancala)) {
           clearInterval(intervalId);
+          this.endTurn();
         }
       }, 1000);
     }
@@ -132,51 +226,26 @@ class App extends Component {
     return (
       <div className="App">
         <div className="info-container">
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={() => this.playTurn(true)}
-          >
+          <Button variant="outlined" onClick={() => this.playTurn(true)}>
             Clockwise
           </Button>
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={() => this.playTurn(false)}
-          >
-            Counter clockwise
+          <Button variant="outlined" onClick={() => this.playTurn(false)}>
+            Counter-clockwise
+          </Button>
+          <Button variant="outlined" onClick={() => this.handleOnclick(1)}>
+            Computer Play
+          </Button>
+          <Button variant="outlined" onClick={this.performTurn.bind(this)}>
+            Perform
           </Button>
 
           {this.state.popUp ? (
             <div className="pop-up">
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => this.playTurn(this.state.isClockwise)}
-              >
-                skip
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => this.stealStones(0)}
-              >
-                Place 1 Stone & Pick 0
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => this.stealStones(1)}
-              >
-                Place 1 Stone & Pick 1
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => this.stealStones(2)}
-              >
-                Place 1 Stone & Pick 2
-              </Button>
+              {Config.options.map((op, index) => (
+                <Button key={index} variant="contained" color="primary" onClick={() => this.stealStones(op)}>
+                  {op.label}
+                </Button>
+              ))}
             </div>
           ) : (
             <div className="pop-up" />
@@ -198,7 +267,9 @@ class App extends Component {
                 <Cell
                   key={index}
                   cellState={cell}
-                  onClick={() => this.onClick(index)}
+                  onClick={() => {
+                    this.onClick(index);
+                  }}
                 />
               );
             })
