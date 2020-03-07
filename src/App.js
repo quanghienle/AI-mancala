@@ -1,8 +1,10 @@
 import React, { Component } from "react";
-import Cell from "./components/Cell";
 import Config from "./config";
-import { Spinner } from "react-bootstrap";
-import Button from "@material-ui/core/Button";
+import Info from "./components/Info";
+import PopUp from "./components/PopUp";
+import SideBar from "./components/SideBar";
+import ExpressUtils from "./express_utils";
+import Grid from "./components/Grid";
 import "./App.css";
 
 class App extends Component {
@@ -11,120 +13,69 @@ class App extends Component {
     playerTurn: Math.random() >= 0.5 ? "x" : "o",
     stonesInHand: 0,
     popUp: false,
+    humanPlayer: true,
     activeCell: null,
-    isClockwise: null
+    isClockwise: null,
+    gameEnd: false
   };
 
   UNSAFE_componentWillMount() {
     console.log("=== SUCCESSFULLY CONNECTED TO BACKEND ===");
-    this.callBackendAPI("/backend")
-      .then(res => {
-        this.setState({ grid: res.grid });
-      })
+    ExpressUtils.get("/backend")
+      .then(res => this.setState({ grid: res.grid }))
       .catch(err => console.log(err));
   }
-  callBackendAPI = async endpoint => {
-    const response = await fetch(endpoint);
-    const body = await response.json();
-    return body;
+
+  getBestMove = async (who, h) => {
+    const reqObj = {
+      player: who,
+      type: h,
+      gridArr: this.state.grid
+    };
+
+    const body = await ExpressUtils.post("/api", reqObj);
+    console.log("node count: ", body.nodeCount);
+    console.log("Best move: ", body.move);  
+    this.setState({ node: body.move });
   };
 
-  ex = {
-    index: 0,
-    isClockwise: true,
-    opList: [
-      { label: "place 1 & take 1", put: 1, take: 1 },
-      { label: "place 1 & take 1", put: 1, take: 1 }
-    ],
-    cost: 49,
-    path: [
-      { index: 0, numberOfStones: 0, stonesInHand: 5 },
-      { index: 1, numberOfStones: 6, stonesInHand: 4 },
-      { index: 2, numberOfStones: 1, stonesInHand: 3 },
-      { index: 3, numberOfStones: 6, stonesInHand: 2 },
-      { index: 4, numberOfStones: 6, stonesInHand: 1 },
-      { index: 5, numberOfStones: 0, stonesInHand: 6 },
-      { index: 6, numberOfStones: 6, stonesInHand: 5 },
-      { index: 7, numberOfStones: 6, stonesInHand: 4 },
-      { index: 8, numberOfStones: 0, stonesInHand: 4 },
-      { index: 9, numberOfStones: 6, stonesInHand: 3 },
-      { index: 10, numberOfStones: 6, stonesInHand: 2 },
-      { index: 11, numberOfStones: 6, stonesInHand: 1 },
-      { index: 12, numberOfStones: 0, stonesInHand: 6 },
-      { index: 13, numberOfStones: 6, stonesInHand: 5 },
-      { index: 14, numberOfStones: 1, stonesInHand: 4 },
-      { index: 15, numberOfStones: 6, stonesInHand: 3 },
-      { index: 16, numberOfStones: 6, stonesInHand: 2 },
-      { index: 17, numberOfStones: 6, stonesInHand: 1 },
-      { index: 18, numberOfStones: 0, stonesInHand: 6 },
-      { index: 19, numberOfStones: 6, stonesInHand: 5 },
-      { index: 20, numberOfStones: 0, stonesInHand: 5 },
-      { index: 21, numberOfStones: 6, stonesInHand: 4 },
-      { index: 22, numberOfStones: 6, stonesInHand: 3 },
-      { index: 23, numberOfStones: 6, stonesInHand: 2 },
-      { index: 0, numberOfStones: 1, stonesInHand: 1 },
-      { index: 1, numberOfStones: 0, stonesInHand: 7 },
-      { index: 2, numberOfStones: 2, stonesInHand: 6 },
-      { index: 3, numberOfStones: 7, stonesInHand: 5 },
-      { index: 4, numberOfStones: 7, stonesInHand: 4 },
-      { index: 5, numberOfStones: 1, stonesInHand: 3 },
-      { index: 6, numberOfStones: 7, stonesInHand: 2 },
-      { index: 7, numberOfStones: 7, stonesInHand: 1 },
-      { index: 8, numberOfStones: 0, stonesInHand: 1 },
-      { index: 9, numberOfStones: 0, stonesInHand: 7 },
-      { index: 10, numberOfStones: 7, stonesInHand: 6 },
-      { index: 11, numberOfStones: 7, stonesInHand: 5 },
-      { index: 12, numberOfStones: 1, stonesInHand: 4 },
-      { index: 13, numberOfStones: 7, stonesInHand: 3 },
-      { index: 14, numberOfStones: 2, stonesInHand: 2 },
-      { index: 15, numberOfStones: 7, stonesInHand: 1 },
-      { index: 16, numberOfStones: 0, stonesInHand: 7 },
-      { index: 17, numberOfStones: 7, stonesInHand: 6 },
-      { index: 18, numberOfStones: 1, stonesInHand: 5 },
-      { index: 19, numberOfStones: 7, stonesInHand: 4 },
-      { index: 20, numberOfStones: 0, stonesInHand: 4 },
-      { index: 21, numberOfStones: 7, stonesInHand: 3 },
-      { index: 22, numberOfStones: 7, stonesInHand: 2 },
-      { index: 23, numberOfStones: 7, stonesInHand: 1 },
-      { index: 0, numberOfStones: 0, stonesInHand: 2 },
-      { index: 1, numberOfStones: 1, stonesInHand: 1 },
-      { index: 2, numberOfStones: 3, stonesInHand: 0 }
-    ]
-  };
+  performTurn = async (who, h) => {
+    if (this.state.playerTurn !== who || this.state.gameEnd) {
+      return;
+    }
 
-  performTurn() {
+    await this.getBestMove(who, h);
+
     let count = 0;
-    const end = this.ex.path.length;
 
     const intervalId = setInterval(() => {
-      const cellNum = this.ex.path[count].index;
-      const numStones = this.ex.path[count].numberOfStones;
-      const hand = this.ex.path[count].stonesInHand;
+      const move = this.state.node.path[count];
+
+      const mancalasPos = Config.player[this.state.playerTurn].mancala;
 
       this.clearActive();
-      this.updateCell({ active: true, numberOfStones: numStones }, cellNum);
-      this.setState({ activeCell: cellNum, stonesInHand: hand });
+
+      const updatedGrid = [...this.state.grid];
+      
+      updatedGrid[mancalasPos[0]].numberOfStones = move.mancalaStones[0];
+      updatedGrid[mancalasPos[1]].numberOfStones = move.mancalaStones[1];
+      updatedGrid[move.index].active = true;
+      updatedGrid[move.index].numberOfStones = move.numberOfStones;
+
+      this.setState({
+        activeCell: move.index,
+        isClockwise: null,
+        stonesInHand: move.stonesInHand,
+        grid: updatedGrid
+      });
 
       count += 1;
-      if (count === end) {
-        clearInterval(intervalId);
-      }
-    }, 1000);
-  }
 
-  handleOnclick = async index => {
-    const response = await fetch("/api", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        player: "x",
-        gridArr: this.state.grid
-      })
-    });
-    const body = await response.json();
-    console.log("Path: ", body.path);
+      if (count === this.state.node.path.length) {
+        clearInterval(intervalId);
+        this.endTurn();
+      }
+    }, Config.speed);
   };
 
   updateCell(obj, cellNum) {
@@ -137,18 +88,35 @@ class App extends Component {
     this.state.grid.forEach((_, index) => this.updateCell({ active: false }, index));
   }
 
-  onClick(cellNum) {
+  gridOnClick(cellNum) {
     if (
       this.state.grid[cellNum].player === this.state.playerTurn &&
       !this.state.grid[cellNum].mancala &&
-      this.state.stonesInHand === 0
+      this.state.stonesInHand === 0 &&
+      !this.state.gameEnd &&
+      this.state.humanPlayer &&
+      this.state.playerTurn === "x"
     ) {
       this.clearActive();
-      this.setState({ activeCell: cellNum });
 
       const stones = this.state.grid[cellNum].numberOfStones;
       this.updateCell({ active: true, numberOfStones: 0 }, cellNum);
-      this.setState({ stonesInHand: stones });
+      this.setState({ stonesInHand: stones, activeCell: cellNum });
+    }
+  }
+
+  gameEnd() {
+    let sum_x,
+      sum_o = 0;
+
+    this.state.grid
+      .filter(cell => !cell.mancala)
+      .forEach(cell => {
+        cell.player === "o" ? (sum_o += cell.numberOfStones) : (sum_x += cell.numberOfStones);
+      });
+
+    if (sum_x === 0 || sum_o === 0) {
+      this.setState({ gameEnd: true });
     }
   }
 
@@ -157,99 +125,111 @@ class App extends Component {
   }
 
   endTurn() {
-    const nextPlayer = this.state.playerTurn === "x" ? "o" : "x";
-    this.setState({ playerTurn: nextPlayer, popUp: false });
+    this.gameEnd();
+
+    if (!this.state.gameEnd) {
+      if (Config.player[this.state.playerTurn].mancala.includes(this.state.activeCell)) {
+        console.log("Ended at mancala. Continue playing.");
+        return;
+      }
+      const nextPlayer = this.state.playerTurn === "x" ? "o" : "x";
+      this.setState({ playerTurn: nextPlayer, popUp: false });
+    }
   }
 
   stealStones(op) {
-    const num = op.take;
-    const isSkip = op.put === 0;
-
-    if (isSkip) {
-      this.playTurn(this.state.isClockwise);
+    if (this.state.gameEnd) {
       return;
     }
 
-    const curr = this.state.activeCell;
+    // if no skip
+    if (op.put !== 0) {
+      const curr = this.state.activeCell;
 
-    const currPlayer = this.state.playerTurn;
-    const playerMancalas = Config.player[currPlayer].mancala;
-    const isMin = this.state.grid[playerMancalas[0]].numberOfStones < this.state.grid[playerMancalas[1]].numberOfStones;
+      const currPlayer = this.state.playerTurn;
+      const playerMancalas = Config.player[currPlayer].mancala;
+      const isMin =
+        this.state.grid[playerMancalas[0]].numberOfStones <
+        this.state.grid[playerMancalas[1]].numberOfStones;
 
-    const min = isMin ? playerMancalas[0] : playerMancalas[1];
+      const min = isMin ? playerMancalas[0] : playerMancalas[1];
 
-    const opStones = this.state.grid[curr].numberOfStones;
-    const minMancalaStones = this.state.grid[min].numberOfStones;
+      const opStones = this.state.grid[curr].numberOfStones;
+      const minMancalaStones = this.state.grid[min].numberOfStones;
 
-    this.updateCell({ numberOfStones: opStones - num + 1 }, curr);
-    this.updateCell({ numberOfStones: minMancalaStones + num }, min);
-    this.setState({ stonesInHand: this.state.stonesInHand - 1 });
+      this.updateCell({ numberOfStones: opStones - op.take + 1 }, curr);
+      this.updateCell({ numberOfStones: minMancalaStones + op.take }, min);
+      this.setState({ stonesInHand: this.state.stonesInHand - 1 });
+    }
+
     this.playTurn(this.state.isClockwise);
   }
 
   playTurn(isClockwise) {
-    if (this.state.stonesInHand !== 0) {
-      this.setState({ popUp: false });
-      this.setState({ isClockwise: isClockwise });
-      const intervalId = setInterval(() => {
-        const next = this.getNext(this.state.activeCell, isClockwise);
-        const stones = this.state.stonesInHand;
-        let updatedStones = this.state.grid[next].numberOfStones + 1;
-        let updatedHand = stones - 1;
-
-        if (updatedHand === 0 && updatedStones > 1 && !this.state.grid[next].mancala) {
-          updatedHand = updatedStones;
-          updatedStones = 0;
-        }
-
-        this.clearActive();
-        this.updateCell({ active: true }, next);
-        this.setState({ activeCell: next });
-
-        if (this.state.grid[next].mancala && this.state.grid[next].player !== this.state.playerTurn) {
-          this.setState({ popUp: true, stonesInHand: stones });
-          clearInterval(intervalId);
-        } else {
-          this.updateCell({ numberOfStones: updatedStones }, next);
-          this.setState({ stonesInHand: updatedHand });
-        }
-
-        if (updatedHand <= 0 && (updatedStones === 1 || this.state.grid[next].mancala)) {
-          clearInterval(intervalId);
-          this.endTurn();
-        }
-      }, 1000);
+    if (this.state.gameEnd) {
+      return;
     }
+
+    this.setState({ popUp: false, isClockwise: isClockwise });
+
+    const intervalId = setInterval(() => {
+      if (this.state.stonesInHand === 0) {
+        clearInterval(intervalId);
+        this.endTurn();
+        return;
+      }
+
+      const next = this.getNext(this.state.activeCell, isClockwise);
+      let updatedStones = this.state.grid[next].numberOfStones + 1;
+      let updatedHand = this.state.stonesInHand - 1;
+
+      if (updatedHand === 0 && updatedStones > 1 && !this.state.grid[next].mancala) {
+        updatedHand = updatedStones;
+        updatedStones = 0;
+      }
+
+      this.clearActive();
+      this.updateCell({ active: true }, next);
+      this.setState({ activeCell: next });
+
+      const isOpMancala =
+        this.state.grid[next].mancala && this.state.grid[next].player !== this.state.playerTurn;
+
+      if (isOpMancala) {
+        this.setState({ popUp: true });
+        clearInterval(intervalId);
+      } else {
+        this.updateCell({ numberOfStones: updatedStones }, next);
+        this.setState({ stonesInHand: updatedHand });
+      }
+
+      if (
+        updatedHand <= 0 &&
+        (updatedStones === 1 || this.state.grid[next].mancala) &&
+        !isOpMancala
+      ) {
+        clearInterval(intervalId);
+        this.endTurn();
+      }
+    }, Config.speed);
   }
 
   render() {
     return (
       <div className="App">
         <div className="info-container">
-          <Button variant="outlined" onClick={() => this.playTurn(true)}>
-            Clockwise
-          </Button>
-          <Button variant="outlined" onClick={() => this.playTurn(false)}>
-            Counter-clockwise
-          </Button>
-          <Button variant="outlined" onClick={() => this.handleOnclick(1)}>
-            Computer Play
-          </Button>
-          <Button variant="outlined" onClick={this.performTurn.bind(this)}>
-            Perform
-          </Button>
-
-          {this.state.popUp ? (
-            <div className="pop-up">
-              {Config.options.map((op, index) => (
-                <Button key={index} variant="contained" color="primary" onClick={() => this.stealStones(op)}>
-                  {op.label}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <div className="pop-up" />
-          )}
+          <SideBar
+            humanPlayer={this.state.humanPlayer}
+            playerTurn={this.state.playerTurn}
+            performTurn={this.performTurn.bind(this)}
+            playTurn={this.playTurn.bind(this)}
+          />
+          <PopUp
+            visible={this.state.popUp}
+            grid={this.state.grid}
+            activeCell={this.state.activeCell}
+            onClick={this.stealStones.bind(this)}
+          />
         </div>
         <div
           className="grid-container"
@@ -259,23 +239,13 @@ class App extends Component {
             backgroundSize: `${Config.cellHeight}px ${Config.cellHeight}px`
           }}
         >
-          {this.state.grid === null ? (
-            <Spinner animation="border" variant="primary" />
-          ) : (
-            this.state.grid.map((cell, index) => {
-              return (
-                <Cell
-                  key={index}
-                  cellState={cell}
-                  onClick={() => {
-                    this.onClick(index);
-                  }}
-                />
-              );
-            })
-          )}
-          <h3>Stones in hand: {this.state.stonesInHand}</h3>
-          <h3>{Config.player[this.state.playerTurn].name}</h3>
+          <Grid grid={this.state.grid} onClick={this.gridOnClick.bind(this)} />
+          <Info
+            gameEnd={this.state.gameEnd}
+            grid={this.state.grid}
+            stonesInHand={this.state.stonesInHand}
+            playerTurn={this.state.playerTurn}
+          />
         </div>
       </div>
     );

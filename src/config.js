@@ -2,7 +2,8 @@
 
 const config = {
     cellHeight: 70,
-    numberOfStones: 5,
+    speed: 200,
+    numberOfStones: 6,
     activeColor: 'magenta',
     options: [
         {label: 'skip', put: 0, take: 0},

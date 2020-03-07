@@ -18,15 +18,4 @@
     justify-content: space-around;
 }
 
-.pop-up {
-    /* background-color: lightgray; */
-    /* margin: 100px auto; */
-    height: 250px;
-    /* position: relative; */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border-radius: 20px;
-    opacity: 0.9;
-    justify-content: space-around;
-}
+

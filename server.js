@@ -2,13 +2,11 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 5000;
 
-// console.log that your server is up and running
+
 app.listen(port, () => console.log(`Listening on port ${port}`));
 
-// const bodyParser = require("body-parser");
 app.use(express.json());
 
-// create a GET route
 app.get("/backend", (req, res) => {
   const grid = require("./server_src/GridInit");
   const gridArr = grid.top.concat(grid.right, grid.bottom, grid.left);
@@ -16,31 +14,14 @@ app.get("/backend", (req, res) => {
   res.send({ grid: [...gridArr] });
 });
 
-const h = (grid, player) => {
-    let score = 0;
-
-    grid.forEach((cell, index) => {
-        if (cell.player === player){
-            score += cell.numberOfStones;
-        }        
-    });
-
-    return score;
-}
-
 
 app.post("/api", (req, res) => {
+  const heuristics = require("./server_src/Heuristics");
+  const h = req.body.type === 1 ? heuristics.h_side : heuristics.h_mancalas;
 
-  console.log("\n=======================================================");
-//   console.log(req.body)
+  const Minimax = require("./server_src/MinimaxAB");
+  const [best, nodeCount]= new Minimax().alpha_beta_search(req.body.gridArr, req.body.player, h);
 
-  const Move = require("./server_src/PossibleMoves");
-  const getMove = new Move(req.body.player, h);
 
-    getMove.findAll(req.body.gridArr);
-    // console.log(getMove.findAll(req.body.gridArr));
-//   console.log(getMove.findSuccessors([], req.body.gridArr, 0, 0));
-
-  console.log("Done. Now sending to client...");
-  res.send(JSON.stringify({ path: "heyy"}));
+  res.send(JSON.stringify({ move: best, nodeCount: nodeCount}));
 });
