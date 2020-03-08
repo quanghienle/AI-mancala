@@ -54,7 +54,7 @@ module.exports = class Minimax {
 
     const info = [];
     for (const child of successors) {
-      const val = this.min_value(child, best_val, beta, 2, h);
+      const val = this.min_value(child, best_val, beta, 1, h);
       info.push(val);
       if (val > best_val) {
         best_val = val;

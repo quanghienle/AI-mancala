@@ -7,6 +7,10 @@ import ExpressUtils from "./express_utils";
 import Grid from "./components/Grid";
 import "./App.css";
 
+const mancalas = {
+  x: Config.player["x"].mancala,
+  o: Config.player["o"].mancala
+};
 class App extends Component {
   state = {
     grid: null,
@@ -34,8 +38,8 @@ class App extends Component {
     };
 
     const body = await ExpressUtils.post("/api", reqObj);
-    console.log("node count: ", body.nodeCount);
-    console.log("Best move: ", body.move);  
+    console.log(`node count: ${body.nodeCount}`);
+    console.log("Best move: ", body.move);
     this.setState({ node: body.move });
   };
 
@@ -51,12 +55,12 @@ class App extends Component {
     const intervalId = setInterval(() => {
       const move = this.state.node.path[count];
 
-      const mancalasPos = Config.player[this.state.playerTurn].mancala;
+      const mancalasPos = mancalas[this.state.playerTurn];
 
       this.clearActive();
 
       const updatedGrid = [...this.state.grid];
-      
+
       updatedGrid[mancalasPos[0]].numberOfStones = move.mancalaStones[0];
       updatedGrid[mancalasPos[1]].numberOfStones = move.mancalaStones[1];
       updatedGrid[move.index].active = true;
@@ -89,6 +93,7 @@ class App extends Component {
   }
 
   gridOnClick(cellNum) {
+
     if (
       this.state.grid[cellNum].player === this.state.playerTurn &&
       !this.state.grid[cellNum].mancala &&
@@ -105,9 +110,13 @@ class App extends Component {
     }
   }
 
+  updateStones(cellNum, numStones) {
+    this.updateCell({ numberOfStones: numStones }, cellNum);
+  }
+
   gameEnd() {
-    let sum_x,
-      sum_o = 0;
+    let sum_x = 0;
+    let sum_o = 0;
 
     this.state.grid
       .filter(cell => !cell.mancala)
@@ -115,23 +124,66 @@ class App extends Component {
         cell.player === "o" ? (sum_o += cell.numberOfStones) : (sum_x += cell.numberOfStones);
       });
 
+    const mancala_x =
+      sum_x + this.state.grid[2].numberOfStones + this.state.grid[14].numberOfStones;
+    const mancala_o =
+      sum_o + this.state.grid[8].numberOfStones + this.state.grid[20].numberOfStones;
+
+    console.log(`blue: ${mancala_x}, red: ${mancala_o}`);
+
     if (sum_x === 0 || sum_o === 0) {
+      this.state.grid.forEach((_, index) => {
+        let numStones = 0;
+        (index === 2) && (numStones = mancala_x);
+        (index === 8) && (numStones = mancala_o);
+        this.updateStones(index, numStones);
+      });
+
       this.setState({ gameEnd: true });
+
+      console.log(this.state.gameEnd);
+      return true;
     }
+    return false;
   }
 
   getNext(curr, isClockwise) {
     return isClockwise ? (curr + 1) % 24 : (curr + 23) % 24;
   }
 
-  endTurn() {
-    this.gameEnd();
+  lastStoneBonus() {
+    const currIndex = this.state.activeCell;
+    const neighbors = Config.player[this.state.playerTurn].neighbors;
+    let adjacents = neighbors.find(e => e.pos === currIndex);
 
-    if (!this.state.gameEnd) {
+    if (typeof adjacents !== "undefined" && this.state.grid[currIndex].numberOfStones === 1) {
+      const stonesList = adjacents.adjacent.map(e => this.state.grid[e].numberOfStones);
+      const maxStones = Math.max(...stonesList);
+      const maxIndex = stonesList.indexOf(maxStones);
+      const maxNeighbor = adjacents.adjacent[maxIndex];
+
+      const updatedGrid = [...this.state.grid];
+
+      updatedGrid[maxNeighbor].numberOfStones = 0;
+
+      const mancalaPos = mancalas[this.state.playerTurn][0];
+      updatedGrid[mancalaPos].numberOfStones =
+        this.state.grid[mancalaPos].numberOfStones + maxStones;
+
+      this.setState({ grid: updatedGrid });
+      console.log("taking ", maxStones, " stones from adjacent neighbor");
+    }
+  }
+
+  endTurn() {
+    const cont = this.gameEnd();
+
+    if (!this.state.gameEnd || cont) {
       if (Config.player[this.state.playerTurn].mancala.includes(this.state.activeCell)) {
         console.log("Ended at mancala. Continue playing.");
         return;
       }
+      this.lastStoneBonus();
       const nextPlayer = this.state.playerTurn === "x" ? "o" : "x";
       this.setState({ playerTurn: nextPlayer, popUp: false });
     }
@@ -166,7 +218,7 @@ class App extends Component {
   }
 
   playTurn(isClockwise) {
-    if (this.state.gameEnd) {
+    if (this.state.gameEnd || this.state.stonesInHand === 0) {
       return;
     }
 
@@ -218,18 +270,21 @@ class App extends Component {
     return (
       <div className="App">
         <div className="info-container">
-          <SideBar
-            humanPlayer={this.state.humanPlayer}
-            playerTurn={this.state.playerTurn}
-            performTurn={this.performTurn.bind(this)}
-            playTurn={this.playTurn.bind(this)}
-          />
-          <PopUp
-            visible={this.state.popUp}
-            grid={this.state.grid}
-            activeCell={this.state.activeCell}
-            onClick={this.stealStones.bind(this)}
-          />
+          {this.state.popUp ? (
+            <PopUp
+              visible={this.state.popUp}
+              grid={this.state.grid}
+              activeCell={this.state.activeCell}
+              onClick={this.stealStones.bind(this)}
+            />
+          ) : (
+            <SideBar
+              humanPlayer={this.state.humanPlayer}
+              playerTurn={this.state.playerTurn}
+              performTurn={this.performTurn.bind(this)}
+              playTurn={this.playTurn.bind(this)}
+            />
+          )}
         </div>
         <div
           className="grid-container"

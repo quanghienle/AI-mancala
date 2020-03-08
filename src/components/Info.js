@@ -23,8 +23,6 @@ class Info extends Component {
 
       return (
         <h3>
-          {player_x.name}'s score: {sum_x} <br />
-          {player_o.name}'s score: {sum_o} <br />
           {winner} wins !!
         </h3>
       );

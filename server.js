@@ -11,7 +11,7 @@ app.get("/backend", (req, res) => {
   const grid = require("./server_src/GridInit");
   const gridArr = grid.top.concat(grid.right, grid.bottom, grid.left);
 
-  res.send({ grid: [...gridArr] });
+  res.send({ grid: gridArr });
 });
 
 

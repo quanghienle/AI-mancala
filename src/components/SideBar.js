@@ -6,7 +6,7 @@ class SideBar extends Component {
   displayButtons() {
     if (this.props.humanPlayer && this.props.playerTurn === "x") {
       return (
-        <div>
+        <div style={{display: "flex", flexDirection: "column", height: "100px", justifyContent: "space-between"}}>
           <Button variant="contained" color="primary" onClick={() => this.props.playTurn(true)}>
             Clockwise
           </Button>

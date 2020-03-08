@@ -1,5 +1,5 @@
 const config = require("../src/config");
-const Node = require("./Node")
+const Node = require("./Node");
 
 class PossibleMoves {
   constructor(currPlayer) {
@@ -12,36 +12,22 @@ class PossibleMoves {
 
   updateGrid = (op, grid, currIndex, stones) => {
     const mancalaPos = config.player[this.currPlayer].mancala;
-    const first = grid[mancalaPos[0]].numberOfStones;
-    const second = grid[mancalaPos[1]].numberOfStones;
-
-    const min = first < second ? mancalaPos[0] : mancalaPos[1];
 
     const updatedGrid = [...grid];
     updatedGrid[currIndex].numberOfStones = grid[currIndex].numberOfStones + op.put - op.take;
-    updatedGrid[min].numberOfStones = grid[min].numberOfStones + op.take;
+    updatedGrid[mancalaPos[0]].numberOfStones = grid[mancalaPos[0]].numberOfStones + op.take;
     const updatedStones = stones - op.put;
 
     return { updatedGrid, updatedStones };
   };
 
-  getOption = (curr, next, grid, stones) => {
-    let i = 2;
-    if (grid[next].numberOfStones === 0 && stones === 1) {
-      i = 0;
-    } else if (grid[curr].numberOfStones >= 1) {
-      i = 3;
-    }
-
-    return config.options[i];
+  getOption = (curr, grid, isSkip) => {
+    let i = grid[curr].numberOfStones >= 1 ? 3 : 2;
+    return isSkip ? config.options[0] : config.options[i];
   };
 
   getMancalas = grid => {
-    const mancalaPos = config.player[this.currPlayer].mancala;
-    const first = grid[mancalaPos[0]].numberOfStones;
-    const second = grid[mancalaPos[1]].numberOfStones;
-
-    return [first, second];
+    return config.player[this.currPlayer].mancala.map(i => grid[i].numberOfStones);
   };
 
   makePath = (index, currStones, handStones, mancalaStones) => {
@@ -53,7 +39,7 @@ class PossibleMoves {
     };
   };
 
-  findSuccessors = (currList, path, grid, currIndex, stones, isClockwise) => {
+  findSuccessors = (currList, path, grid, currIndex, stones, isClockwise, isSkip) => {
     this.result = null;
     this.path = null;
     this.lastIndex = null;
@@ -61,7 +47,7 @@ class PossibleMoves {
     const next = this.getNextIndex(currIndex, isClockwise);
 
     if (grid[currIndex].mancala && this.currPlayer !== grid[currIndex].player) {
-      const op = this.getOption(currIndex, next, grid, stones);
+      const op = this.getOption(currIndex, grid, isSkip);
 
       currList.push(op.label);
 
@@ -75,7 +61,15 @@ class PossibleMoves {
       );
       path.push(node);
 
-      return this.findSuccessors(currList, path, updatedGrid, next, updatedStones, isClockwise);
+      return this.findSuccessors(
+        currList,
+        path,
+        updatedGrid,
+        next,
+        updatedStones,
+        isClockwise,
+        isSkip
+      );
     } else {
       let updatedStones = grid[currIndex].numberOfStones + 1;
       let updatedHand = stones - 1;
@@ -89,6 +83,7 @@ class PossibleMoves {
       path.push(node);
 
       if (updatedHand <= 0 && (updatedStones === 1 || grid[currIndex].mancala)) {
+        this.lastStoneBonus(currIndex, grid);
         this.result = grid;
         this.path = path;
         this.lastIndex = currIndex;
@@ -97,38 +92,54 @@ class PossibleMoves {
         return currList;
       } else {
         grid[currIndex].numberOfStones = updatedStones;
-        return this.findSuccessors(currList, path, grid, next, updatedHand, isClockwise);
+        return this.findSuccessors(currList, path, grid, next, updatedHand, isClockwise, isSkip);
       }
     }
   };
 
-  createNode = (index, isClockwise, path, opList, grid, lastIndex) => {
-    return {
-      index: index,
-      isClockwise: isClockwise,
-      player: this.currPlayer,
-      path: path,
-      opList: opList,
-      grid: grid,
-    };
-  };
+  lastStoneBonus(currIndex, grid) {
+    const neighbors = config.player[this.currPlayer].neighbors;
+    let adjacents = neighbors.find(e => e.pos === currIndex);
+
+    if (typeof adjacents !== "undefined" && grid[currIndex].numberOfStones === 1) {
+      const stonesList = adjacents.adjacent.map(e => grid[e].numberOfStones);
+      const maxStones = Math.max(...stonesList);
+      const maxIndex = stonesList.indexOf(maxStones);
+      const maxNeighbor = adjacents.adjacent[maxIndex];
+
+      grid[maxNeighbor].numberOfStones = 0;
+
+      const mancalaPos = config.player[this.currPlayer].mancala[0];
+      grid[mancalaPos].numberOfStones = grid[mancalaPos].numberOfStones + maxStones;
+    }
+  }
 
   findAll = grid => {
     const moves = [];
+    const clockwise = [
+      [true, false],
+      [true, false],
+      [false, false],
+      [false, false]
+    ];
 
     grid.forEach((cell, index) => {
-      if (cell.player === this.currPlayer && !cell.mancala && cell.numberOfStones>0) {
-        const clone1 = JSON.parse(JSON.stringify(grid));
-        const clockwiseNode = this.findSuccessors(["start"], [], clone1, index, 0, true);
-        moves.push(
-          new Node(index, true, this.currPlayer, this.path, clockwiseNode, this.result, this.lastIndex)
-        );
-
-        const clone2 = JSON.parse(JSON.stringify(grid));
-        const counterNode = this.findSuccessors(["start"], [], clone2, index, 0, false);
-        moves.push(
-          new Node(index, false, this.currPlayer, this.path, counterNode, this.result, this.lastIndex)
-        );
+      if (cell.player === this.currPlayer && !cell.mancala && cell.numberOfStones > 0) {
+        clockwise.forEach(c => {
+          const clone1 = JSON.parse(JSON.stringify(grid));
+          const clockwiseNode = this.findSuccessors(["start"], [], clone1, index, 0, c[0], c[1]);
+          moves.push(
+            new Node(
+              index,
+              true,
+              this.currPlayer,
+              this.path,
+              clockwiseNode,
+              this.result,
+              this.lastIndex
+            )
+          );
+        });
       }
     });
     return moves;
